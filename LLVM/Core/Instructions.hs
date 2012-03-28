@@ -4,6 +4,7 @@ module LLVM.Core.Instructions(
     BinOpDesc(..), InstrDesc(..), ArgDesc(..), getInstrDesc,
     -- * Terminator instructions
     ret,
+    unsafeRet,
     condBr,
     br,
     switch,
@@ -235,6 +236,28 @@ instance Ret () () where
     ret' _ = do
         withCurrentBuilder_ $ FFI.buildRetVoid
         return terminate
+
+-- | Return from the current function the given value with any return type;
+-- useful for cases where the return type cannot be determined at compile
+-- time to be correct.
+class UnsafeRet a where
+    unsafeRet' :: a -> CodeGenFunction r Terminate
+
+instance (IsFirstClass a, IsConst a) => UnsafeRet a where
+    unsafeRet' = unsafeRet . valueOf
+
+instance UnsafeRet (Value a) where
+    unsafeRet' (Value a) = do
+        withCurrentBuilder_ $ \bldPtr -> FFI.buildRet bldPtr a
+        return terminate
+
+instance UnsafeRet () where
+    unsafeRet' _ = do
+        withCurrentBuilder_ $ FFI.buildRetVoid
+        return terminate
+
+unsafeRet :: UnsafeRet a => a -> CodeGenFunction r Terminate
+unsafeRet = unsafeRet'
 
 withCurrentBuilder_ :: (FFI.BuilderRef -> IO a) -> CodeGenFunction r ()
 withCurrentBuilder_ p = withCurrentBuilder p >> return ()

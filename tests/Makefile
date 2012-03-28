@@ -1,6 +1,6 @@
 ghc := ghc
 ghcflags := -Wall -Werror
-tests := TestType TestValue
+tests := TestValue
 
 all: $(tests:%=%.out)
 
